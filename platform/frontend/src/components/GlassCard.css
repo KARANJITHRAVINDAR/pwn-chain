@@ -1,0 +1,15 @@
+.pwn-card {
+  padding: 2rem;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pwn-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  opacity: 0.5;
+}

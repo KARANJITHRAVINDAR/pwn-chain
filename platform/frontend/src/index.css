@@ -1,0 +1,63 @@
+:root {
+  --color-bg: #050505;
+  --color-primary: #00ff88;
+  --color-primary-dim: rgba(0, 255, 136, 0.2);
+  --color-text: #ffffff;
+  --color-text-dim: #aaaaaa;
+  --font-main: 'Inter', 'Roboto', 'Courier New', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-main);
+  overflow-x: hidden;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: rgba(10, 10, 10, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--color-primary-dim);
+  border-radius: 8px;
+  box-shadow: 0 4px 30px rgba(0, 255, 136, 0.1);
+}
+
+/* Glowing text utility */
+.glow-text {
+  color: var(--color-primary);
+  text-shadow: 0 0 10px var(--color-primary-dim), 0 0 20px var(--color-primary-dim);
+}
+
+/* Blinking cursor effect */
+.blink-cursor::after {
+  content: '_';
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary-dim);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
