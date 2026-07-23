@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
 import ParticleBackground from './components/ParticleBackground';
 import api from './utils/api';
 import './App.css';
@@ -41,6 +42,7 @@ function App() {
           <Route path="/login" element={!isAuthenticated ? <Login setAuth={setIsAuthenticated} setUser={setUser} /> : <Navigate to="/dashboard" />} />
           <Route path="/register" element={!isAuthenticated ? <Register setAuth={setIsAuthenticated} setUser={setUser} /> : <Navigate to="/dashboard" />} />
           <Route path="/dashboard" element={isAuthenticated ? <Dashboard user={user} setAuth={setIsAuthenticated} setUser={setUser}/> : <Navigate to="/login" />} />
+          <Route path="/profile" element={isAuthenticated ? <Profile user={user} setAuth={setIsAuthenticated} setUser={setUser}/> : <Navigate to="/login" />} />
           <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
         </Routes>
       </div>
