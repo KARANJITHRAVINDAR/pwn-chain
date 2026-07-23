@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # File uploads
     UPLOAD_DIR: str = "uploads"
 
-    model_config = {"env_file": "../.env", "env_file_encoding": "utf-8", "extra": "ignore"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()

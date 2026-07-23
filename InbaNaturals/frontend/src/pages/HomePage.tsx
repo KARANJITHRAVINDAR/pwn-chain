@@ -4,8 +4,13 @@ import { ArrowRight, Leaf, Shield, Heart, ChevronLeft, ChevronRight, Sparkles } 
 import LeafDivider from '../components/LeafDivider';
 import ProductCard from '../components/ProductCard';
 import StarRating from '../components/StarRating';
-import { products } from '../data/products';
+import api from '../api/client';
+import type { ProductListItem } from '../types';
 import { INSTAGRAM_URL } from '../config';
+import hairOilImg from '../assets/images/products/hair-oil-main.jpg';
+import hairPackImg from '../assets/images/products/hair-pack-main.jpg';
+import facePackImg from '../assets/images/products/face-pack-main.jpg';
+import faceSerumImg from '../assets/images/products/face-serum-main.jpg';
 import FAQAccordion from '../components/FAQAccordion';
 
 const testimonials = [
@@ -31,12 +36,19 @@ const testimonials = [
 
 export default function HomePage() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const [featuredProducts, setFeaturedProducts] = useState<ProductListItem[]>([]);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
     }, 5000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    api.get('/products', { params: { featured: 'true' } })
+      .then(r => setFeaturedProducts(r.data))
+      .catch(console.error);
   }, []);
 
   return (
@@ -95,7 +107,7 @@ export default function HomePage() {
               {/* Main placeholder */}
               <div className="w-80 h-80 md:w-96 md:h-96 rounded-[3rem] shadow-2xl overflow-hidden border-4 border-white/60">
                 <img
-                  src="https://placehold.co/400x400/7A9471/FAF6EE?text=InbaNaturals"
+                  src={hairOilImg}
                   alt="InbaNaturals hero product"
                   className="w-full h-full object-cover"
                 />
@@ -126,7 +138,7 @@ export default function HomePage() {
           </p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {products.map((product) => (
+          {featuredProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
@@ -169,8 +181,8 @@ export default function HomePage() {
                   Hair Oil + Hair Pack: A complete deep conditioning package to strengthen roots and restore silky texture.
                 </p>
                 <div className="flex gap-2 mb-6">
-                  <img src="https://placehold.co/100x100/7A9471/FAF6EE?text=Oil" alt="Hair Oil" className="w-14 h-14 rounded-xl object-cover border border-ivory-dark" />
-                  <img src="https://placehold.co/100x100/A8C1A1/2E2A26?text=Pack" alt="Hair Pack" className="w-14 h-14 rounded-xl object-cover border border-ivory-dark" />
+                  <img src={hairOilImg} alt="Abha Herbal Hair Oil" className="w-14 h-14 rounded-xl object-cover border border-ivory-dark" />
+                  <img src={hairPackImg} alt="Clear Scalp Anti-Dandruff Hair Pack" className="w-14 h-14 rounded-xl object-cover border border-ivory-dark" />
                 </div>
               </div>
               <div className="flex items-center justify-between pt-4 border-t border-ivory-dark">
@@ -198,8 +210,8 @@ export default function HomePage() {
                   Face Pack + Face Serum: Our Ayurvedic brightening clay mask paired with premium vitamin C hydration.
                 </p>
                 <div className="flex gap-2 mb-6">
-                  <img src="https://placehold.co/100x100/C97C5D/FAF6EE?text=Pack" alt="Face Pack" className="w-14 h-14 rounded-xl object-cover border border-ivory-dark" />
-                  <img src="https://placehold.co/100x100/5A7453/FAF6EE?text=Serum" alt="Face Serum" className="w-14 h-14 rounded-xl object-cover border border-ivory-dark" />
+                  <img src={facePackImg} alt="Vitamin C Glow Face Pack" className="w-14 h-14 rounded-xl object-cover border border-ivory-dark" />
+                  <img src={faceSerumImg} alt="Botanical Radiance Face Serum" className="w-14 h-14 rounded-xl object-cover border border-ivory-dark" />
                 </div>
               </div>
               <div className="flex items-center justify-between pt-4 border-t border-ivory-dark">
@@ -339,7 +351,7 @@ export default function HomePage() {
                   className="group relative aspect-square rounded-2xl overflow-hidden bg-ivory border border-ivory-dark shadow-sm hover:shadow-md"
                 >
                   <img
-                    src={`https://placehold.co/300x300/${['7A9471', 'A8C1A1', 'C97C5D', 'FAF6EE', '5A7453', 'F0E8D6'][i]}/${['FAF6EE', '2E2A26', 'FAF6EE', '7A9471', 'FAF6EE', '2E2A26'][i]}?text=✦`}
+                    src={[hairOilImg, hairPackImg, facePackImg, faceSerumImg, hairOilImg, hairPackImg][i]}
                     alt={`Instagram post ${i + 1}`}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />

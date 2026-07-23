@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { getWhatsAppComboLink, WHATSAPP_NUMBER } from '../config';
-import { products } from '../data/products';
+import api from '../api/client';
+import type { ProductListItem } from '../types';
 import LeafDivider from '../components/LeafDivider';
 import { Check, ShoppingBag, MessageSquare, Trash2, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -33,6 +34,13 @@ const combos: ComboDefinition[] = [
 
 export default function CombosPage() {
   const { addToCart, cart, cartTotal, cartCount, clearCart } = useCart();
+  const [products, setProducts] = useState<ProductListItem[]>([]);
+
+  useEffect(() => {
+    api.get('/products', { params: { page_size: 50 } })
+      .then(r => setProducts(r.data))
+      .catch(console.error);
+  }, []);
   
   // State to track which products are active in which combo.
   // By default, all products in each combo are selected.
@@ -56,9 +64,9 @@ export default function CombosPage() {
     let originalTotal = 0;
     
     selectedIds.forEach((id) => {
-      const prod = products.find((p) => p.id === id);
+      const prod = products.find((p) => p.slug === id);
       if (prod) {
-        originalTotal += parseInt(prod.price.replace(/\D/g, '')) || 0;
+        originalTotal += prod.price || 0;
       }
     });
 
@@ -78,34 +86,24 @@ export default function CombosPage() {
   const handleAddComboToCart = (combo: ComboDefinition) => {
     const selectedIds = comboSelections[combo.id] || [];
     if (selectedIds.length === 0) return;
-
-    const { finalTotal } = calculateComboPrices(combo);
-    const isAllSelected = selectedIds.length === combo.productIds.length;
     
-    if (isAllSelected) {
-      // Add as a single combo item to the cart
-      addToCart({
-        id: combo.id,
-        name: combo.name,
-        price: `₹${finalTotal}`,
-        size: `${selectedIds.length} Products`,
-        image: products.find((p) => p.id === selectedIds[0])?.image,
-      });
-    } else {
-      // Add individual selected items since it's customized/partial combo
-      selectedIds.forEach((id) => {
-        const prod = products.find((p) => p.id === id);
-        if (prod) {
-          addToCart({
-            id: prod.id,
-            name: prod.name,
-            price: prod.price,
-            size: prod.sizes[0],
-            image: prod.image,
-          });
-        }
-      });
-    }
+    // Add individual selected items since the backend cart expects actual product IDs
+    selectedIds.forEach((id) => {
+      const prod = products.find((p) => p.slug === id);
+      if (prod) {
+        addToCart({
+          product_id: prod.id,
+          name: prod.name,
+          slug: prod.slug,
+          price: prod.price,
+          original_price: prod.original_price,
+          image: prod.image_url,
+          size_index: 0,
+          size_label: 'Standard',
+          quantity: 1,
+        });
+      }
+    });
   };
 
   const handleOrderComboWhatsApp = (combo: ComboDefinition) => {
@@ -113,7 +111,7 @@ export default function CombosPage() {
     if (selectedIds.length === 0) return;
     
     const selectedProductNames = selectedIds.map(
-      (id) => products.find((p) => p.id === id)?.name || id
+      (id) => products.find((p) => p.slug === id)?.name || id
     );
 
     const waLink = getWhatsAppComboLink(combo.name, selectedProductNames);
@@ -166,7 +164,7 @@ export default function CombosPage() {
                   {/* Combined Thumbnails */}
                   <div className="flex gap-3 mb-6 bg-ivory p-4 rounded-2xl border border-ivory-dark">
                     {combo.productIds.map((id) => {
-                      const prod = products.find((p) => p.id === id);
+                      const prod = products.find((p) => p.slug === id);
                       const isSelected = selectedIds.includes(id);
                       if (!prod) return null;
                       return (
@@ -177,7 +175,7 @@ export default function CombosPage() {
                             isSelected ? 'border-sage scale-105 shadow-sm' : 'border-transparent opacity-40 hover:opacity-60'
                           }`}
                         >
-                          <img src={prod.image} alt={prod.name} className="w-full h-full object-cover" />
+                          <img src={prod.image_url} alt={prod.name} className="w-full h-full object-cover" />
                           {isSelected && (
                             <div className="absolute top-1 right-1 w-5 h-5 bg-sage text-white rounded-full flex items-center justify-center">
                               <Check size={12} strokeWidth={3} />
@@ -195,7 +193,7 @@ export default function CombosPage() {
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {combo.productIds.map((id) => {
-                        const prod = products.find((p) => p.id === id);
+                        const prod = products.find((p) => p.slug === id);
                         const isSelected = selectedIds.includes(id);
                         if (!prod) return null;
                         return (
@@ -299,7 +297,7 @@ export default function CombosPage() {
             <a
               href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
                 `Hi! I'd like to check out my cart total of ₹${cartTotal}. Items in cart: ${cart
-                  .map((item) => `${item.name} (${item.size}) x${item.quantity}`)
+                  .map((item) => `${item.name} (${item.size_label}) x${item.quantity}`)
                   .join(', ')}`
               )}`}
               target="_blank"

@@ -1,5 +1,7 @@
 import { Leaf, Heart, Sprout } from 'lucide-react';
 import LeafDivider from '../components/LeafDivider';
+import hairOilImg from '../assets/images/products/hair-oil-main.jpg';
+import faceSerumImg from '../assets/images/products/face-serum-main.jpg';
 
 export default function AboutPage() {
   return (
@@ -20,7 +22,7 @@ export default function AboutPage() {
             <div className="relative">
               <div className="w-72 h-80 md:w-96 md:h-[26rem] rounded-3xl overflow-hidden shadow-xl border-4 border-white">
                 <img
-                  src="https://placehold.co/400x450/A8C1A1/2E2A26?text=Founder+Photo"
+                  src={hairOilImg}
                   alt="Founder placeholder"
                   className="w-full h-full object-cover"
                 />
@@ -52,7 +54,7 @@ export default function AboutPage() {
             </p>
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-sage">
-                <img src="https://placehold.co/50x50/7A9471/FAF6EE?text=Founder" alt="Founder signature" className="w-full h-full object-cover" />
+                <img src={faceSerumImg} alt="Founder" className="w-full h-full object-cover" />
               </div>
               <div>
                 <p className="font-serif text-charcoal font-semibold">Ananya Founder</p>

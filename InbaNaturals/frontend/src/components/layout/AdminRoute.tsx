@@ -5,9 +5,9 @@ import Spinner from '../ui/Spinner';
 import AdminSidebar from './AdminSidebar';
 
 export default function AdminRoute() {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Spinner size="lg" />

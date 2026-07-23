@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { SlidersHorizontal, Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { SlidersHorizontal, Search, Loader2 } from 'lucide-react';
 import LeafDivider from '../components/LeafDivider';
 import ProductCard from '../components/ProductCard';
-import { products } from '../data/products';
+import api from '../api/client';
+import type { ProductListItem } from '../types';
 
 type FilterCategory = 'all' | 'hair' | 'face';
 type SortOption = 'default' | 'price-asc' | 'price-desc' | 'name';
@@ -12,18 +13,36 @@ export default function ShopPage() {
   const [sort, setSort] = useState<SortOption>('default');
   const [search, setSearch] = useState('');
 
-  const filtered = products
-    .filter((p) => {
-      const matchCat = filter === 'all' || p.category === filter;
-      const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
-      return matchCat && matchSearch;
-    })
-    .sort((a, b) => {
-      if (sort === 'name') return a.name.localeCompare(b.name);
-      if (sort === 'price-asc') return parseInt(a.price.replace(/\D/g, '')) - parseInt(b.price.replace(/\D/g, ''));
-      if (sort === 'price-desc') return parseInt(b.price.replace(/\D/g, '')) - parseInt(a.price.replace(/\D/g, ''));
-      return 0;
-    });
+  const [products, setProducts] = useState<ProductListItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      const params: Record<string, string> = {};
+      if (filter !== 'all') params.category = filter;
+      if (sort !== 'default') params.sort = sort.replace('-', '_');
+      if (search) params.search = search;
+      params.page = '1';
+      params.page_size = '50';
+      
+      try {
+        const res = await api.get('/products', { params });
+        setProducts(res.data);
+        setTotal(res.data.length); // assuming API doesn't return total count yet
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      fetchProducts();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filter, sort, search]);
 
   return (
     <div className="min-h-screen">
@@ -90,13 +109,17 @@ export default function ShopPage() {
 
         {/* Results count */}
         <p className="text-charcoal-light text-sm mb-6">
-          Showing <span className="font-medium text-charcoal">{filtered.length}</span> product{filtered.length !== 1 ? 's' : ''}
+          Showing <span className="font-medium text-charcoal">{total}</span> product{total !== 1 ? 's' : ''}
         </p>
 
         {/* Product grid */}
-        {filtered.length > 0 ? (
+        {loading ? (
+          <div className="py-20 flex justify-center">
+            <Loader2 className="w-8 h-8 text-sage animate-spin" />
+          </div>
+        ) : products.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {filtered.map((product) => (
+            {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>

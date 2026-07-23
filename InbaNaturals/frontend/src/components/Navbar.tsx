@@ -122,7 +122,8 @@ export default function Navbar() {
               )}
 
               {/* Cart icon */}
-              <button
+              <Link
+                to="/cart"
                 className="relative flex items-center justify-center w-10 h-10 rounded-xl hover:bg-ivory-dark transition-colors cursor-pointer"
                 aria-label="Shopping cart"
               >
@@ -132,7 +133,7 @@ export default function Navbar() {
                     {cartCount}
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Hamburger button — only on mobile */}
               <button

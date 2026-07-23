@@ -1,27 +1,53 @@
 import { Link } from 'react-router-dom';
-import type { Product } from '../data/products';
+import type { ProductListItem } from '../types';
 import { ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { getWhatsAppProductLink } from '../config';
 
 interface ProductCardProps {
-  product: Product;
+  product: ProductListItem;
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { addToCart } = useCart();
 
+  // Try to parse sizes, default to 'Standard' if not available
+  const firstSize = (() => {
+    try {
+      // For ProductListItem, size is not directly available, so we fallback
+      // Actually we don't have sizes on ProductListItem, we can just use 'Standard'
+      // Or we can assume sizes are passed if we change the API or just use 'Standard'
+      return 'Standard';
+    } catch {
+      return 'Standard';
+    }
+  })();
+
+  const handleAddToCart = () => {
+    addToCart({
+      product_id: product.id,
+      name: product.name,
+      slug: product.slug,
+      price: product.price,
+      original_price: product.original_price,
+      image: product.image_url,
+      size_index: 0,
+      size_label: firstSize,
+      quantity: 1,
+    });
+  };
+
   return (
     <div className="group bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-ivory-dark flex flex-col">
       {/* Image */}
-      <Link to={`/product/${product.id}`} className="block overflow-hidden">
+      <Link to={`/product/${product.slug}`} className="block overflow-hidden">
         <div className="relative overflow-hidden bg-ivory-dark h-64">
           <img
-            src={product.image}
+            src={product.image_url}
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
-          {product.originalPrice && (
+          {product.original_price && (
             <span className="absolute top-3 left-3 bg-terracotta text-white text-xs font-medium px-2 py-1 rounded-full">
               Sale
             </span>
@@ -34,7 +60,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <p className="text-xs text-sage font-medium uppercase tracking-widest mb-1">
           {product.category === 'hair' ? 'Hair Care' : 'Skin Care'}
         </p>
-        <Link to={`/product/${product.id}`}>
+        <Link to={`/product/${product.slug}`}>
           <h3 className="font-serif text-xl text-charcoal font-semibold leading-tight hover:text-sage transition-colors">
             {product.name}
           </h3>
@@ -46,13 +72,13 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div className="flex flex-col gap-3 mt-auto">
           <div className="flex items-baseline justify-between">
             <div className="flex items-baseline gap-2">
-              <span className="text-terracotta font-semibold text-lg">{product.price}</span>
-              {product.originalPrice && (
-                <span className="text-charcoal-light text-sm line-through">{product.originalPrice}</span>
+              <span className="text-terracotta font-semibold text-lg">₹{product.price.toLocaleString('en-IN')}</span>
+              {product.original_price && (
+                <span className="text-charcoal-light text-sm line-through">₹{product.original_price.toLocaleString('en-IN')}</span>
               )}
             </div>
             <Link
-              to={`/product/${product.id}`}
+              to={`/product/${product.slug}`}
               className="text-sage text-sm font-medium hover:underline flex items-center gap-1"
             >
               Details →
@@ -61,14 +87,14 @@ export default function ProductCard({ product }: ProductCardProps) {
           
           <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={() => addToCart({ id: product.id, name: product.name, price: product.price, size: product.sizes[0], image: product.image })}
+              onClick={handleAddToCart}
               className="flex items-center justify-center gap-1.5 bg-sage hover:bg-sage-dark text-white text-xs font-semibold py-2.5 px-3 rounded-xl transition-all hover:scale-[1.03] duration-200 cursor-pointer"
             >
               <ShoppingBag size={14} />
               Add
             </button>
             <a
-              href={getWhatsAppProductLink(product.name, product.sizes[0] || 'Standard')}
+              href={getWhatsAppProductLink(product.name, firstSize)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-1.5 bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold py-2.5 px-3 rounded-xl transition-all hover:scale-[1.03] duration-200"

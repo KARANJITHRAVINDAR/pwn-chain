@@ -12,11 +12,24 @@ import CombosPage from './pages/CombosPage';
 import FAQPage from './pages/FAQPage';
 import BlogListingPage from './pages/BlogListingPage';
 import BlogPostDetailPage from './pages/BlogPostDetailPage';
+import CheckoutPage from './pages/CheckoutPage';
+import OrdersPage from './pages/OrdersPage';
+import OrderDetailPage from './pages/OrderDetailPage';
+import CartPage from './pages/CartPage';
+import WalletPage from './pages/WalletPage';
+import ProtectedRoute from './components/layout/ProtectedRoute';
+import AdminRoute from './components/layout/AdminRoute';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminProducts from './pages/admin/AdminProducts';
+import AdminOrders from './pages/admin/AdminOrders';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminReviews from './pages/admin/AdminReviews';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import VerifyEmailPage from './pages/auth/VerifyEmailPage';
 import ScrollToTop from './components/ScrollToTop';
 
 // Placeholder policy pages
@@ -47,12 +60,27 @@ export default function App() {
         <ScrollToTop />
         <div className="flex flex-col min-h-screen">
           <Navbar />
-          <main className="flex-1">
+          <main className="flex-1 flex flex-col">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/shop" element={<ShopPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route element={<ProtectedRoute />}>
+                <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/wallet" element={<WalletPage />} />
+                <Route path="/orders" element={<OrdersPage />} />
+                <Route path="/orders/:id" element={<OrderDetailPage />} />
+              </Route>
+              <Route path="/admin" element={<AdminRoute />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="products" element={<AdminProducts />} />
+                <Route path="orders" element={<AdminOrders />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="reviews" element={<AdminReviews />} />
+              </Route>
               <Route path="/combos" element={<CombosPage />} />
               <Route path="/faq" element={<FAQPage />} />
               <Route path="/blog" element={<BlogListingPage />} />
@@ -62,7 +90,7 @@ export default function App() {
               <Route path="/testimonials" element={<TestimonialsPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/shipping" element={<PolicyPage title="Shipping Policy" />} />
-              <Route path="/returns" element={<PolicyPage title="Returns & Refunds" />} />
+              <Route path="/returns" element={<PolicyPage title="Returns Policy" />} />
               <Route path="/privacy" element={<PolicyPage title="Privacy Policy" />} />
               <Route path="/terms" element={<PolicyPage title="Terms of Service" />} />
               <Route path="*" element={

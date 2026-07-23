@@ -1,113 +1,149 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
-import { ShoppingBag, Zap, ChevronLeft, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Zap, ChevronLeft, ArrowRight, Loader2 } from 'lucide-react';
 import LeafDivider from '../components/LeafDivider';
 import ProductCard from '../components/ProductCard';
 import StarRating from '../components/StarRating';
-import { products } from '../data/products';
+import api from '../api/client';
+import type { Product, ProductListItem, Review } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/ui/Toast';
+
+// Fallback secondary images since backend doesn't store them yet
+import hairOilImg2 from '../assets/images/products/hair-oil-2.jpg';
+import hairPackImg2 from '../assets/images/products/hair-pack-2.jpg';
+import facePackImg2 from '../assets/images/products/face-pack-2.jpg';
+import faceSerumImg2 from '../assets/images/products/face-serum-2.jpg';
+
+const secondaryImages: Record<string, string> = {
+  'hair-oil': hairOilImg2,
+  'hair-pack': hairPackImg2,
+  'face-pack': facePackImg2,
+  'face-serum': faceSerumImg2,
+};
 import { useCart } from '../context/CartContext';
 import { getWhatsAppProductLink } from '../config';
 
 type Tab = 'description' | 'howToUse' | 'ingredients';
 
-interface ReviewItem {
-  name: string;
-  rating: number;
-  date: string;
-  comment: string;
-}
 
-const defaultReviews: Record<string, ReviewItem[]> = {
-  'hair-oil': [
-    { name: 'Kavya M.', rating: 5, date: 'June 2025', comment: 'Absolutely love this product! Noticed a difference within the first week. Will definitely repurchase.' },
-    { name: 'Sneha R.', rating: 5, date: 'May 2025', comment: 'The texture is amazing and the scent is so pleasant. Very gentle and effective.' },
-    { name: 'Divya P.', rating: 4, date: 'April 2025', comment: 'Great quality product. Shipping was fast and packaging was beautiful. Highly recommend InbaNaturals!' },
-  ],
-  'hair-pack': [
-    { name: 'Aruna S.', rating: 5, date: 'June 2025', comment: 'Made my curls so soft and bouncy. Smells fantastic and easy to wash off.' },
-    { name: 'Meera G.', rating: 4, date: 'May 2025', comment: 'Very deep conditioning pack. Helps smooth my frizz a lot. Excellent natural quality.' },
-  ],
-  'face-pack': [
-    { name: 'Sonal T.', rating: 5, date: 'May 2025', comment: 'Glowing skin instantly. It gives a gentle tightening effect without drying my skin.' },
-    { name: 'Kirti J.', rating: 5, date: 'April 2025', comment: 'Pure clay experience. Feels like a premium spa mask. Repurchasing immediately!' },
-  ],
-  'face-serum': [
-    { name: 'Rahul V.', rating: 5, date: 'June 2025', comment: 'Remarkable brightness after 2 weeks. Lightweight serum, non sticky.' },
-    { name: 'Pooja K.', rating: 5, date: 'May 2025', comment: 'The hydration holds all day. Fits perfectly into my skincare routing!' },
-  ],
-};
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const product = products.find((p) => p.id === id);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [relatedProducts, setRelatedProducts] = useState<ProductListItem[]>([]);
 
   const [selectedSize, setSelectedSize] = useState(0);
   const [selectedImage, setSelectedImage] = useState(0);
   const [activeTab, setActiveTab] = useState<Tab>('description');
   const { addToCart } = useCart();
 
-  // Initialize review list based on current product id
-  const [reviewsList, setReviewsList] = useState<ReviewItem[]>(() => {
-    return defaultReviews[id || ''] || defaultReviews['hair-oil'];
-  });
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
 
   // Review Form State
-  const [reviewerName, setReviewerName] = useState('');
   const [reviewerRating, setReviewerRating] = useState(5);
   const [reviewerComment, setReviewerComment] = useState('');
-  const [formSubmitted, setFormSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    api.get(`/products/slug/${id}`)
+      .then(r => {
+        setProduct(r.data);
+        return api.get('/products', { params: { category: r.data.category } });
+      })
+      .then(r => setRelatedProducts(r.data.filter((p: ProductListItem) => p.slug !== id).slice(0, 3)))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  useEffect(() => {
+    if (!product) return;
+    setReviewsLoading(true);
+    api.get(`/products/${product.id}/reviews`)
+      .then(r => setReviews(r.data))
+      .catch(() => {})
+      .finally(() => setReviewsLoading(false));
+  }, [product]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-sage animate-spin" />
+      </div>
+    );
+  }
 
   if (!product) return <Navigate to="/shop" replace />;
 
-  const relatedProducts = products.filter((p) => p.id !== id).slice(0, 3);
+  const parsedSizes = (() => {
+    try {
+      return JSON.parse(product.sizes || '[]');
+    } catch {
+      return [];
+    }
+  })();
 
   // Recalculate average rating dynamically
-  const reviewsCount = reviewsList.length;
-  const averageRating = (
-    reviewsList.reduce((acc, r) => acc + r.rating, 0) / (reviewsCount || 1)
-  ).toFixed(1);
+  const reviewsCount = reviews.length;
+  const averageRating = reviewsCount > 0
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviewsCount).toFixed(1)
+    : '0.0';
 
-  // Placeholder thumbnails (same color, different text)
+  // Product gallery thumbnails
   const thumbnails = [
-    product.image,
-    product.image.replace('?text=', '?text=View+2+'),
-    product.image.replace('?text=', '?text=View+3+'),
-    product.image.replace('?text=', '?text=View+4+'),
+    product.image_url,
+    secondaryImages[product.slug] || product.image_url,
   ];
 
   const tabContent: Record<Tab, string> = {
     description: product.description,
-    howToUse: product.howToUse,
+    howToUse: product.how_to_use,
     ingredients: product.ingredients,
   };
 
   const handleAddToCart = () => {
     addToCart({
-      id: product.id,
+      product_id: product.id,
       name: product.name,
+      slug: product.slug,
       price: product.price,
-      size: product.sizes[selectedSize],
-      image: product.image,
+      original_price: product.original_price,
+      image: product.image_url,
+      size_index: selectedSize,
+      size_label: parsedSizes[selectedSize] || 'Standard',
+      quantity: 1,
     });
   };
 
-  const handleReviewSubmit = (e: React.FormEvent) => {
+  const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reviewerName.trim() || !reviewerComment.trim()) return;
+    if (!reviewerComment.trim()) return;
 
-    const newReview: ReviewItem = {
-      name: reviewerName,
-      rating: reviewerRating,
-      date: 'Today',
-      comment: reviewerComment,
-    };
-
-    setReviewsList((prev) => [newReview, ...prev]);
-    setReviewerName('');
-    setReviewerRating(5);
-    setReviewerComment('');
-    setFormSubmitted(true);
-    setTimeout(() => setFormSubmitted(false), 3000);
+    setIsSubmitting(true);
+    try {
+      const res = await api.post(`/products/${product!.id}/reviews`, {
+        rating: reviewerRating,
+        comment: reviewerComment,
+      });
+      setReviews(prev => [res.data, ...prev]);
+      setReviewerRating(5);
+      setReviewerComment('');
+      showToast('Review submitted! Awaiting approval.', 'success');
+    } catch (err: any) {
+      if (err.response?.status === 409) {
+        showToast('You have already reviewed this product.', 'error');
+      } else {
+        showToast('Failed to submit review.', 'error');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -179,11 +215,11 @@ export default function ProductDetailPage() {
 
             {/* Price */}
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-semibold text-terracotta">{product.price}</span>
-              {product.originalPrice && (
+              <span className="text-3xl font-semibold text-terracotta">₹{product.price.toLocaleString('en-IN')}</span>
+              {product.original_price && (
                 <>
-                  <span className="text-charcoal-light text-lg line-through">{product.originalPrice}</span>
-                  <span className="text-xs bg-terracotta/10 text-terracotta font-medium px-2 py-0.5 rounded-full">Save {Math.round((1 - parseInt(product.price.replace(/\D/g,'')) / parseInt(product.originalPrice.replace(/\D/g,''))) * 100)}%</span>
+                  <span className="text-charcoal-light text-lg line-through">₹{product.original_price.toLocaleString('en-IN')}</span>
+                  <span className="text-xs bg-terracotta/10 text-terracotta font-medium px-2 py-0.5 rounded-full">Save {Math.round((1 - product.price / product.original_price) * 100)}%</span>
                 </>
               )}
             </div>
@@ -195,10 +231,10 @@ export default function ProductDetailPage() {
             {/* Size selector */}
             <div>
               <p className="text-sm font-medium text-charcoal mb-3">
-                Size: <span className="text-sage">{product.sizes[selectedSize]}</span>
+                Size: <span className="text-sage">{parsedSizes[selectedSize] || 'Standard'}</span>
               </p>
               <div className="flex gap-3 flex-wrap">
-                {product.sizes.map((size, i) => (
+                {parsedSizes.length > 0 ? parsedSizes.map((size: string, i: number) => (
                   <button
                     key={size}
                     onClick={() => setSelectedSize(i)}
@@ -210,7 +246,9 @@ export default function ProductDetailPage() {
                   >
                     {size}
                   </button>
-                ))}
+                )) : (
+                  <button className="px-5 py-2.5 rounded-xl border-2 border-sage bg-sage/10 text-sage text-sm font-medium">Standard</button>
+                )}
               </div>
             </div>
 
@@ -232,7 +270,7 @@ export default function ProductDetailPage() {
 
               {/* Order via WhatsApp */}
               <a
-                href={getWhatsAppProductLink(product.name, product.sizes[selectedSize])}
+                href={getWhatsAppProductLink(product.name, parsedSizes[selectedSize] || 'Standard')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full flex items-center justify-center gap-2.5 bg-terracotta hover:bg-terracotta-dark text-white font-semibold py-4 rounded-2xl transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 text-base animate-pulse shadow-md shadow-terracotta/20 hover:animate-none"
@@ -294,85 +332,96 @@ export default function ProductDetailPage() {
           <div className="grid lg:grid-cols-3 gap-8 items-start">
             {/* Reviews List */}
             <div className="lg:col-span-2 space-y-5">
-              {reviewsList.map((review, i) => (
-                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-ivory-dark animate-fade-in">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-sage/20 flex items-center justify-center font-serif font-bold text-sage">
-                        {review.name[0]}
-                      </div>
-                      <div>
-                        <p className="font-medium text-charcoal text-sm">{review.name}</p>
-                        <p className="text-charcoal-light text-xs">{review.date}</p>
-                      </div>
-                    </div>
-                    <StarRating rating={review.rating} />
-                  </div>
-                  <p className="text-charcoal-light text-sm leading-relaxed">{review.comment}</p>
+              {reviewsLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-sage animate-spin" />
                 </div>
-              ))}
+              ) : reviews.length === 0 ? (
+                <div className="bg-white rounded-2xl p-12 shadow-sm border border-ivory-dark text-center">
+                  <p className="text-charcoal-light">No reviews yet. Be the first to share your experience!</p>
+                </div>
+              ) : (
+                reviews.map((review) => (
+                  <div key={review.id} className="bg-white rounded-2xl p-5 shadow-sm border border-ivory-dark animate-fade-in relative">
+                    {!review.is_approved && (
+                      <div className="absolute top-4 right-4 bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full">
+                        Pending Approval
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between mb-3 pr-24">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-sage/20 flex items-center justify-center font-serif font-bold text-sage">
+                          {review.username ? review.username[0].toUpperCase() : '?'}
+                        </div>
+                        <div>
+                          <p className="font-medium text-charcoal text-sm">{review.username}</p>
+                          <p className="text-charcoal-light text-xs">
+                            {review.created_at ? new Date(review.created_at).toLocaleDateString('en-IN') : 'Just now'}
+                          </p>
+                        </div>
+                      </div>
+                      <StarRating rating={review.rating} />
+                    </div>
+                    <p className="text-charcoal-light text-sm leading-relaxed">{review.comment}</p>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Write a Review Form */}
-            <div className="bg-white rounded-3xl p-6 border border-ivory-dark shadow-sm">
+            <div className="bg-white rounded-3xl p-6 border border-ivory-dark shadow-sm h-fit sticky top-24">
               <h3 className="font-serif text-xl font-bold text-charcoal mb-2">Write a Review</h3>
-              <p className="text-charcoal-light text-xs mb-5">Share your experience with other customers.</p>
-
-              {formSubmitted && (
-                <div className="bg-sage/10 text-sage text-sm p-4 rounded-xl border border-sage/20 mb-4 animate-fade-in">
-                  ✓ Review submitted successfully!
+              
+              {!user ? (
+                <div className="text-center py-8">
+                  <p className="text-charcoal-light text-sm mb-4">Please login to write a review.</p>
+                  <Link
+                    to="/login"
+                    className="inline-block bg-sage hover:bg-sage-dark text-white font-semibold py-2 px-6 rounded-full transition-colors duration-200 text-sm"
+                  >
+                    Login
+                  </Link>
                 </div>
+              ) : (
+                <>
+                  <p className="text-charcoal-light text-xs mb-5">Share your experience with other customers.</p>
+                  <form onSubmit={handleReviewSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-charcoal mb-1.5 uppercase tracking-wider">
+                        Rating
+                      </label>
+                      <StarRating
+                        rating={reviewerRating}
+                        interactive
+                        onRatingChange={setReviewerRating}
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="reviewer-comment" className="block text-xs font-semibold text-charcoal mb-1.5 uppercase tracking-wider">
+                        Your Review
+                      </label>
+                      <textarea
+                        id="reviewer-comment"
+                        required
+                        rows={4}
+                        value={reviewerComment}
+                        onChange={(e) => setReviewerComment(e.target.value)}
+                        placeholder="What did you think of the product?"
+                        className="w-full px-4 py-2.5 rounded-xl border border-ivory-dark bg-ivory text-charcoal text-sm placeholder-charcoal-light focus:outline-none focus:border-sage transition-colors resize-none"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-sage hover:bg-sage-dark text-white font-semibold py-3 rounded-xl transition-colors duration-200 text-sm flex items-center justify-center gap-2 disabled:opacity-70"
+                    >
+                      {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit Review'}
+                    </button>
+                  </form>
+                </>
               )}
-
-              <form onSubmit={handleReviewSubmit} className="space-y-4">
-                <div>
-                  <label htmlFor="reviewer-name" className="block text-xs font-semibold text-charcoal mb-1.5 uppercase tracking-wider">
-                    Your Name
-                  </label>
-                  <input
-                    id="reviewer-name"
-                    type="text"
-                    required
-                    value={reviewerName}
-                    onChange={(e) => setReviewerName(e.target.value)}
-                    placeholder="Enter your name"
-                    className="w-full px-4 py-2.5 rounded-xl border border-ivory-dark bg-ivory text-charcoal text-sm placeholder-charcoal-light focus:outline-none focus:border-sage transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-charcoal mb-1.5 uppercase tracking-wider">
-                    Rating
-                  </label>
-                  <StarRating
-                    rating={reviewerRating}
-                    interactive
-                    onRatingChange={setReviewerRating}
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="reviewer-comment" className="block text-xs font-semibold text-charcoal mb-1.5 uppercase tracking-wider">
-                    Your Review
-                  </label>
-                  <textarea
-                    id="reviewer-comment"
-                    required
-                    rows={4}
-                    value={reviewerComment}
-                    onChange={(e) => setReviewerComment(e.target.value)}
-                    placeholder="What did you think of the product?"
-                    className="w-full px-4 py-2.5 rounded-xl border border-ivory-dark bg-ivory text-charcoal text-sm placeholder-charcoal-light focus:outline-none focus:border-sage transition-colors resize-none"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full bg-sage hover:bg-sage-dark text-white font-semibold py-3 rounded-xl transition-colors duration-200 text-sm cursor-pointer"
-                >
-                  Submit Review
-                </button>
-              </form>
             </div>
           </div>
         </div>

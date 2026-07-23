@@ -4,9 +4,9 @@ import { useAuth } from '../../context/AuthContext';
 import Spinner from '../ui/Spinner';
 
 export default function ProtectedRoute() {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Spinner size="lg" />
