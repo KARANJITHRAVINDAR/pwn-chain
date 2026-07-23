@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { User, LogOut, CheckCircle, Lock, Server, BookOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import GlassCard from '../components/GlassCard';
 import GlowingButton from '../components/GlowingButton';
 import './Dashboard.css';
 
 const Dashboard = ({ user, setAuth, setUser }) => {
+  const navigate = useNavigate();
   const [session, setSession] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [hintMsg, setHintMsg] = useState(null);
@@ -72,7 +74,7 @@ const Dashboard = ({ user, setAuth, setUser }) => {
           </div>
           {profileOpen && (
             <div className="profile-dropdown glass-panel">
-              <div className="dropdown-item" onClick={() => {}}>View Profile</div>
+              <div className="dropdown-item" onClick={() => navigate('/profile')}>View Profile</div>
               <div className="dropdown-item" onClick={handleLogout}><LogOut size={16}/> Logout</div>
             </div>
           )}
