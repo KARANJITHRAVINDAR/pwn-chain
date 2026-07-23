@@ -8,10 +8,10 @@ from sqlalchemy.orm import sessionmaker
 # Load environment variables from .env file
 load_dotenv()
 
-db_user = os.getenv("DB_USER", "root")
-db_password = os.getenv("DB_PASSWORD", "Kavin@123")
-db_host = os.getenv("DB_HOST", "localhost")
-db_name = os.getenv("DB_NAME", "pwnchain")
+db_user = os.getenv("DB_USER")
+db_password = os.getenv("DB_PASSWORD")
+db_host = os.getenv("DB_HOST")
+db_name = os.getenv("DB_NAME")
 
 # URL-encode the password in case it contains special characters like '@'
 encoded_password = urllib.parse.quote_plus(db_password)
