@@ -9,7 +9,7 @@ echo "[1/2] Starting FastAPI Backend on port 8000..."
 cd platform/backend || exit
 
 # Activate virtual environment
-source venv/bin/activate
+source .venv/bin/activate
 
 # Start backend in background
 uvicorn main:app --reload --port 8000 &

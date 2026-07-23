@@ -1,8 +1,22 @@
+import os
+import urllib.parse
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-SQLALCHEMY_DATABASE_URL = "mysql+pymysql://root:Ks%40kbd23777@localhost/pwnchain"
+# Load environment variables from .env file
+load_dotenv()
+
+db_user = os.getenv("DB_USER", "root")
+db_password = os.getenv("DB_PASSWORD", "Kavin@123")
+db_host = os.getenv("DB_HOST", "localhost")
+db_name = os.getenv("DB_NAME", "pwnchain")
+
+# URL-encode the password in case it contains special characters like '@'
+encoded_password = urllib.parse.quote_plus(db_password)
+
+SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{db_user}:{encoded_password}@{db_host}/{db_name}"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
