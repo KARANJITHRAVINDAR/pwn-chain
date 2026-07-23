@@ -38,14 +38,55 @@ def create_app() -> FastAPI:
 
     # VULNERABLE: Stage 1 - undocumented legacy endpoint, discoverable via directory brute-force (gobuster/ffuf) or Burp Suite passive scan. Not linked in frontend.
     @app.get("/api/v1/health")
-    def legacy_health_check():
-        return {
+    async def legacy_health_check(session: str = None):
+        import time
+        import json
+        import hmac
+        import hashlib
+        import httpx
+
+        response_payload = {
             "status": "ok",
             "service": "inbanaturals-api",
             "version": "1.0.4-legacy",
             "internal_flag": STAGE1_FLAG,
             "debug_mode": True,
         }
+
+        if session:
+            # VULNERABLE-CHAIN: Stage 1 exploit success auto-reports to platform webhook for session-scoped progression tracking.
+            webhook_payload = {
+                "session_id": session,
+                "stage": 1,
+                "proof_token": STAGE1_FLAG,
+                "timestamp": float(time.time()),
+            }
+
+            try:
+                # Serialize payload and calculate HMAC-SHA256 signature
+                payload_str = json.dumps(webhook_payload)
+                signature = hmac.new(
+                    settings.WEBHOOK_SECRET.encode(),
+                    payload_str.encode(),
+                    hashlib.sha256
+                ).hexdigest()
+
+                async with httpx.AsyncClient() as client:
+                    webhook_url = f"{settings.PLATFORM_URL}/api/webhook/stage-complete"
+                    r = await client.post(
+                        webhook_url,
+                        content=payload_str,
+                        headers={
+                            "Content-Type": "application/json",
+                            "x-signature": signature
+                        },
+                        timeout=5.0
+                    )
+                    print(f"[STAGE1] Webhook fired for session {session}, platform responded {r.status_code}")
+            except Exception as e:
+                print(f"[STAGE1] Webhook failed: {e}")
+
+        return response_payload
 
     return app
 

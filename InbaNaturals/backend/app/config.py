@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     # File uploads
     UPLOAD_DIR: str = "uploads"
 
+    # Platform Webhook integration
+    PLATFORM_URL: str = "http://localhost:8001"
+    # TODO: Sync both components to the same .env value before final submission
+    WEBHOOK_SECRET: str = "super-secret-webhook-key-12345"
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 

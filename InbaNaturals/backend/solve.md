@@ -36,3 +36,9 @@ ffuf -u http://localhost:8000/api/FUZZ/health -w /usr/share/wordlists/secLists/D
      "debug_mode": true
    }
    ```
+
+5. Trigger progression reporting to the CTF coordinator by supplying the session parameter:
+   ```bash
+   curl "http://localhost:8000/api/v1/health?session=<session_id>"
+   ```
+   This automatically triggers a signed HMAC-SHA256 webhook to the platform Coordinator to unlock Stage 2.
