@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# Load environment variables from .env file
+
 load_dotenv()
 
 db_user = os.getenv("DB_USER")
@@ -17,6 +17,7 @@ db_name = os.getenv("DB_NAME")
 encoded_password = urllib.parse.quote_plus(db_password)
 
 SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{db_user}:{encoded_password}@{db_host}/{db_name}"
+
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
