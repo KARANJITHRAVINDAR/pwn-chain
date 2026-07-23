@@ -7,6 +7,12 @@ from app.routers import admin, auth, cart, orders, products, reviews, wallet
 import app.models  # noqa: F401 — register all models with Base.metadata
 
 
+import secrets
+
+# Generate STAGE1_FLAG at startup
+STAGE1_FLAG = f"STAGE1_FLAG_{secrets.token_hex(8)}"
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)
 
@@ -30,6 +36,17 @@ def create_app() -> FastAPI:
     def health_check():
         return {"status": "ok", "app": settings.APP_NAME}
 
+    # VULNERABLE: Stage 1 - undocumented legacy endpoint, discoverable via directory brute-force (gobuster/ffuf) or Burp Suite passive scan. Not linked in frontend.
+    @app.get("/api/v1/health")
+    def legacy_health_check():
+        return {
+            "status": "ok",
+            "service": "inbanaturals-api",
+            "version": "1.0.4-legacy",
+            "internal_flag": STAGE1_FLAG,
+            "debug_mode": True,
+        }
+
     return app
 
 
@@ -39,3 +56,7 @@ app = create_app()
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
+    print("\n" + "=" * 50)
+    print(f"STAGE 1 FLAG: {STAGE1_FLAG}")
+    print("=" * 50 + "\n")
+

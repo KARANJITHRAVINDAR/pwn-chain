@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api', // FastAPI default port
+  baseURL: 'http://localhost:8080/api', // FastAPI on port 8080
 });
 
 api.interceptors.request.use((config) => {
