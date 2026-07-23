@@ -2,9 +2,16 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
 venv/
 env/
 .env
+
+# Database
+*.db
+*.db-journal
+*.sqlite3
+uploads/
 
 # Node
 node_modules/
@@ -14,6 +21,18 @@ dist/
 # IDEs
 .idea/
 .vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
 
 # Logs
 *.log
+
+# Test / Cache
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
