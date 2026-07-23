@@ -3,12 +3,17 @@ from email.message import EmailMessage
 
 from app.config import settings
 
-
 def send_verification_email(to_email: str, token: str) -> bool:
-    if not settings.SMTP_USER or not settings.SMTP_PASS:
-        return False
-
     verify_url = f"http://localhost:5173/verify-email?token={token}"
+
+    if not settings.SMTP_USER or not settings.SMTP_PASS:
+        print("\n" + "="*40)
+        print("MOCK EMAIL (SMTP not configured)")
+        print(f"To: {to_email}")
+        print("Subject: Verify your InbaNaturals account")
+        print(f"Link: {verify_url}")
+        print("="*40 + "\n")
+        return True
 
     msg = EmailMessage()
     msg["Subject"] = "Verify your InbaNaturals account"
@@ -28,5 +33,6 @@ def send_verification_email(to_email: str, token: str) -> bool:
             server.login(settings.SMTP_USER, settings.SMTP_PASS)
             server.send_message(msg)
         return True
-    except Exception:
+    except Exception as e:
+        print(f"SMTP Error: {e}")
         return False

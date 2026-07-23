@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { ShoppingCart, Menu, X, MessageCircle } from 'lucide-react';
+import { ShoppingCart, Menu, X, MessageCircle, User, LogOut, LayoutDashboard, ShoppingBag, Wallet } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { WHATSAPP_NUMBER } from '../config';
 
 const navLinks = [
@@ -17,7 +18,9 @@ const navLinks = [
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const { cartCount } = useCart();
+  const { user, logout } = useAuth();
 
   return (
     <>
@@ -71,6 +74,52 @@ export default function Navbar() {
                 <MessageCircle size={14} />
                 WhatsApp
               </a>
+
+              {user ? (
+                <div className="relative">
+                  <button 
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    className="flex items-center justify-center w-10 h-10 rounded-full bg-sage text-white font-serif font-bold text-lg hover:bg-sage-dark transition-colors cursor-pointer"
+                  >
+                    {user.username.charAt(0).toUpperCase()}
+                  </button>
+                  
+                  {dropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-ivory-dark py-2 z-50 animate-[fadeIn_0.2s_ease-out]">
+                        <div className="px-4 py-2 border-b border-ivory-dark mb-1">
+                          <p className="text-sm font-medium text-charcoal truncate">{user.full_name || user.username}</p>
+                          <p className="text-xs text-charcoal-light truncate">{user.email}</p>
+                        </div>
+                        <Link to="/orders" onClick={() => setDropdownOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark">
+                          <ShoppingBag size={16} /> My Orders
+                        </Link>
+                        <Link to="/wallet" onClick={() => setDropdownOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-charcoal hover:bg-ivory-dark">
+                          <Wallet size={16} /> Wallet (₹{user.wallet_balance})
+                        </Link>
+                        {user.role === 'admin' && (
+                          <Link to="/admin" onClick={() => setDropdownOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-sage hover:bg-sage/10 font-medium border-t border-ivory-dark mt-1 pt-2">
+                            <LayoutDashboard size={16} /> Admin Portal
+                          </Link>
+                        )}
+                        <button onClick={() => { logout(); setDropdownOpen(false); }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-terracotta hover:bg-red-50 text-left border-t border-ivory-dark mt-1 pt-2">
+                          <LogOut size={16} /> Sign Out
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="hidden sm:flex items-center gap-2">
+                  <Link to="/login" className="text-sm font-medium text-charcoal-light hover:text-charcoal transition-colors px-2">
+                    Login
+                  </Link>
+                  <Link to="/register" className="text-sm font-medium bg-sage text-white px-3 py-1.5 rounded-lg hover:bg-sage-dark transition-colors">
+                    Register
+                  </Link>
+                </div>
+              )}
 
               {/* Cart icon */}
               <button
