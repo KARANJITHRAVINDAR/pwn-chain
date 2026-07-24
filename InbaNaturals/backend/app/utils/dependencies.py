@@ -27,64 +27,62 @@ async def get_current_user(
     if token:
         demo_session = ACTIVE_SESSIONS.get("demo")
         if demo_session and demo_session.get("token") == token:
-            # Check idempotency: Only trigger webhook on the FIRST authenticated misuse (Session Hijacking)
-            if not demo_session.get("hijacked", False):
-                session_id = request.query_params.get("session") or request.headers.get("x-session") or request.headers.get("session")
-                if not session_id:
-                    try:
-                        import pymysql
-                        conn = pymysql.connect(
-                            host="localhost",
-                            user="root",
-                            password="Kavin@123",
-                            database="pwnchain",
-                            cursorclass=pymysql.cursors.DictCursor,
-                            connect_timeout=2
+            session_id = request.query_params.get("session") or request.headers.get("x-session") or request.headers.get("session")
+            if not session_id:
+                try:
+                    import pymysql
+                    conn = pymysql.connect(
+                        host="localhost",
+                        user="root",
+                        password="Kavin@123",
+                        database="pwnchain",
+                        cursorclass=pymysql.cursors.DictCursor,
+                        connect_timeout=2
+                    )
+                    with conn.cursor() as cursor:
+                        cursor.execute("SELECT id FROM lab_sessions WHERE completed_at IS NULL ORDER BY started_at DESC LIMIT 1")
+                        row = cursor.fetchone()
+                        if row:
+                            session_id = row["id"]
+                    conn.close()
+                except Exception as db_err:
+                    print(f"[STAGE1] DB session fallback notice: {db_err}")
+
+            if session_id:
+                demo_session["hijacked"] = True
+                # VULNERABLE-CHAIN: Stage 1 exploit validation auto-reports to platform webhook for session-scoped progression tracking.
+                webhook_payload = {
+                    "session_id": session_id,
+                    "stage": 1,
+                    "proof": "session_hijack_confirmed",
+                    "proof_token": "session_hijack_confirmed",
+                    "artifact_type": "jwt",
+                    "victim_user": "demo",
+                    "timestamp": float(time.time()),
+                }
+                try:
+                    payload_str = json.dumps(webhook_payload)
+                    signature = hmac.new(
+                        settings.WEBHOOK_SECRET.encode(),
+                        payload_str.encode(),
+                        hashlib.sha256
+                    ).hexdigest()
+
+                    async with httpx.AsyncClient() as client:
+                        webhook_url = f"{settings.PLATFORM_URL}/api/webhook/stage-complete"
+                        r = await client.post(
+                            webhook_url,
+                            content=payload_str,
+                            headers={
+                                "Content-Type": "application/json",
+                                "x-signature": signature
+                            },
+                            timeout=5.0
                         )
-                        with conn.cursor() as cursor:
-                            cursor.execute("SELECT id FROM lab_sessions WHERE completed_at IS NULL ORDER BY started_at DESC LIMIT 1")
-                            row = cursor.fetchone()
-                            if row:
-                                session_id = row["id"]
-                        conn.close()
-                    except Exception as db_err:
-                        print(f"[STAGE1] DB session fallback notice: {db_err}")
-
-                if session_id:
-                    demo_session["hijacked"] = True
-                    # VULNERABLE-CHAIN: Stage 1 exploit validation auto-reports to platform webhook for session-scoped progression tracking.
-                    webhook_payload = {
-                        "session_id": session_id,
-                        "stage": 1,
-                        "proof": "session_hijack_confirmed",
-                        "proof_token": "session_hijack_confirmed",
-                        "artifact_type": "jwt",
-                        "victim_user": "demo",
-                        "timestamp": float(time.time()),
-                    }
-                    try:
-                        payload_str = json.dumps(webhook_payload)
-                        signature = hmac.new(
-                            settings.WEBHOOK_SECRET.encode(),
-                            payload_str.encode(),
-                            hashlib.sha256
-                        ).hexdigest()
-
-                        async with httpx.AsyncClient() as client:
-                            webhook_url = f"{settings.PLATFORM_URL}/api/webhook/stage-complete"
-                            r = await client.post(
-                                webhook_url,
-                                content=payload_str,
-                                headers={
-                                    "Content-Type": "application/json",
-                                    "x-signature": signature
-                                },
-                                timeout=5.0
-                            )
-                            print(f"[STAGE1] Session hijack confirmed for demo user. Webhook fired for session {session_id}, platform responded {r.status_code}")
-                    except Exception as e:
-                        # Non-blocking error handling: Webhook failure should not break the user-facing API response
-                        print(f"[STAGE1] Webhook notification failed: {e}")
+                        print(f"[STAGE1] Session hijack confirmed for demo user. Webhook fired for session {session_id}, platform responded {r.status_code}")
+                except Exception as e:
+                    # Non-blocking error handling: Webhook failure should not break the user-facing API response
+                    print(f"[STAGE1] Webhook notification failed: {e}")
 
     if not token:
         raise HTTPException(

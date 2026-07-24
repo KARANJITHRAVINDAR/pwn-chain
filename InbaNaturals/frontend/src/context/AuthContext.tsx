@@ -64,6 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('pwndora_session_id');
+    document.cookie = 'token=; Max-Age=0; path=/';
+    document.cookie = 'auth_token=; Max-Age=0; path=/';
     setToken(null);
     setUser(null);
     window.location.href = '/';

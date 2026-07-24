@@ -69,20 +69,20 @@ async def webhook_stage_complete(
         db.commit()
         raise HTTPException(status_code=404, detail="Session not found")
         
-    # Verify stage progression
-    if payload.stage != session.max_unlocked_stage:
-        db.commit()
-        raise HTTPException(status_code=400, detail="Invalid stage progression. Stage must be the currently unlocked stage.")
-        
     # Check idempotency: Have we already awarded this stage for this session?
     existing_completion = db.query(models.StageCompletion).filter(
         models.StageCompletion.session_id == payload.session_id,
         models.StageCompletion.stage == payload.stage
     ).first()
-    
+
     if existing_completion:
         db.commit()
         return {"status": "success", "message": "Stage already completed"}
+
+    # Verify stage progression
+    if payload.stage > session.max_unlocked_stage:
+        db.commit()
+        raise HTTPException(status_code=400, detail="Invalid stage progression. Stage is locked.")
         
     # Award points and increment stage
     points_to_award = 100 # Example point value per stage
