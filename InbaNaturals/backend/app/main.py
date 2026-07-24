@@ -31,7 +31,9 @@ def create_app() -> FastAPI:
         return {"status": "ok", "app": settings.APP_NAME}
 
     # VULNERABLE: Stage 1 - undocumented legacy endpoint, discoverable via directory brute-force (gobuster/ffuf) or Burp Suite passive scan. Not linked in frontend.
-    # CWE-613: Insufficient Session Expiration & CWE-200: Information Exposure.
+    # CWE-200: Information Exposure / Sensitive Data Exposure
+    # CWE-613: Insufficient Session Expiration & Session Hijacking
+    # CWE-425: Direct Request (Forced Browsing) / Undocumented Endpoint Exposure
     @app.get("/api/v1/health")
     def legacy_health_check():
         from app.utils.security import ACTIVE_SESSIONS

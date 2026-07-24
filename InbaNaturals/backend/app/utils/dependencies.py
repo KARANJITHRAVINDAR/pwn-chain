@@ -27,16 +27,19 @@ async def get_current_user(
     if token:
         demo_session = ACTIVE_SESSIONS.get("demo")
         if demo_session and demo_session.get("token") == token:
+            # Check idempotency: Only trigger webhook on the FIRST authenticated misuse (Session Hijacking)
             if not demo_session.get("hijacked", False):
                 session_id = request.query_params.get("session") or request.headers.get("x-session") or request.headers.get("session")
                 if session_id:
                     demo_session["hijacked"] = True
-                    # VULNERABLE-CHAIN: Stage 1 exploit success auto-reports to platform webhook for session-scoped progression tracking.
+                    # VULNERABLE-CHAIN: Stage 1 exploit validation auto-reports to platform webhook for session-scoped progression tracking.
                     webhook_payload = {
                         "session_id": session_id,
                         "stage": 1,
-                        "proof": "session_hijack_detected_demo_account",
-                        "proof_token": "session_hijack_detected_demo_account",
+                        "proof": "session_hijack_confirmed",
+                        "proof_token": "session_hijack_confirmed",
+                        "artifact_type": "jwt",
+                        "victim_user": "demo",
                         "timestamp": float(time.time()),
                     }
                     try:
@@ -58,9 +61,10 @@ async def get_current_user(
                                 },
                                 timeout=5.0
                             )
-                            print(f"[STAGE1] Webhook fired for session {session_id}, platform responded {r.status_code}")
+                            print(f"[STAGE1] Session hijack confirmed for demo user. Webhook fired for session {session_id}, platform responded {r.status_code}")
                     except Exception as e:
-                        print(f"[STAGE1] Webhook failed: {e}")
+                        # Non-blocking error handling: Webhook failure should not break the user-facing API response
+                        print(f"[STAGE1] Webhook notification failed: {e}")
 
     if not token:
         raise HTTPException(

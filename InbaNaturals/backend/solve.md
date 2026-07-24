@@ -45,5 +45,5 @@ ffuf -u http://localhost:8000/api/FUZZ/health -w /usr/share/wordlists/secLists/D
    ```bash
    curl -H "Authorization: Bearer eyJhbGciOi..." "http://localhost:8000/api/auth/me?session=<session_id>"
    ```
-   This triggers the backend's compromise-detection logic, which reports the hijack event to the coordinator via a signed HMAC-SHA256 webhook to unlock Stage 2.
+   This triggers the backend's compromise-detection logic, which reports the hijack event (`{"session_id": "<session>", "stage": 1, "proof": "session_hijack_confirmed", "artifact_type": "jwt", "victim_user": "demo", "timestamp": <timestamp>}`) to the coordinator via a signed HMAC-SHA256 webhook to unlock Stage 2.
 
