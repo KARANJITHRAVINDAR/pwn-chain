@@ -22,7 +22,7 @@ const Dashboard = ({ user, setAuth, setUser }) => {
       }
     };
     fetchSession();
-    const interval = setInterval(fetchSession, 5000);
+    const interval = setInterval(fetchSession, 2000);
     return () => clearInterval(interval);
   }, []);
 
