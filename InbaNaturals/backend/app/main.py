@@ -7,12 +7,6 @@ from app.routers import admin, auth, cart, orders, products, reviews, wallet
 import app.models  # noqa: F401 — register all models with Base.metadata
 
 
-import secrets
-
-# Generate STAGE1_FLAG at startup
-STAGE1_FLAG = f"STAGE1_FLAG_{secrets.token_hex(8)}"
-
-
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)
 
@@ -37,56 +31,18 @@ def create_app() -> FastAPI:
         return {"status": "ok", "app": settings.APP_NAME}
 
     # VULNERABLE: Stage 1 - undocumented legacy endpoint, discoverable via directory brute-force (gobuster/ffuf) or Burp Suite passive scan. Not linked in frontend.
+    # CWE-613: Insufficient Session Expiration & CWE-200: Information Exposure.
     @app.get("/api/v1/health")
-    async def legacy_health_check(session: str = None):
-        import time
-        import json
-        import hmac
-        import hashlib
-        import httpx
-
-        response_payload = {
+    def legacy_health_check():
+        from app.utils.security import ACTIVE_SESSIONS
+        demo_token = ACTIVE_SESSIONS.get("demo", {}).get("token", "")
+        return {
             "status": "ok",
             "service": "inbanaturals-api",
             "version": "1.0.4-legacy",
-            "internal_flag": STAGE1_FLAG,
+            "debug_active_sessions": [{"username": "demo", "token": demo_token}],
             "debug_mode": True,
         }
-
-        if session:
-            # VULNERABLE-CHAIN: Stage 1 exploit success auto-reports to platform webhook for session-scoped progression tracking.
-            webhook_payload = {
-                "session_id": session,
-                "stage": 1,
-                "proof_token": STAGE1_FLAG,
-                "timestamp": float(time.time()),
-            }
-
-            try:
-                # Serialize payload and calculate HMAC-SHA256 signature
-                payload_str = json.dumps(webhook_payload)
-                signature = hmac.new(
-                    settings.WEBHOOK_SECRET.encode(),
-                    payload_str.encode(),
-                    hashlib.sha256
-                ).hexdigest()
-
-                async with httpx.AsyncClient() as client:
-                    webhook_url = f"{settings.PLATFORM_URL}/api/webhook/stage-complete"
-                    r = await client.post(
-                        webhook_url,
-                        content=payload_str,
-                        headers={
-                            "Content-Type": "application/json",
-                            "x-signature": signature
-                        },
-                        timeout=5.0
-                    )
-                    print(f"[STAGE1] Webhook fired for session {session}, platform responded {r.status_code}")
-            except Exception as e:
-                print(f"[STAGE1] Webhook failed: {e}")
-
-        return response_payload
 
     return app
 
@@ -97,7 +53,28 @@ app = create_app()
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
-    print("\n" + "=" * 50)
-    print(f"STAGE 1 FLAG: {STAGE1_FLAG}")
-    print("=" * 50 + "\n")
+
+    # Generate active session token for demo user on startup
+    from app.database import SessionLocal
+    from app.models.user import User
+    from app.utils.security import create_access_token, ACTIVE_SESSIONS
+    import time
+
+    db = SessionLocal()
+    try:
+        demo_user = db.query(User).filter(User.username == "demo").first()
+        if demo_user:
+            token = create_access_token(data={"sub": str(demo_user.id)})
+            ACTIVE_SESSIONS["demo"] = {
+                "token": token,
+                "issued_at": time.time(),
+                "hijacked": False
+            }
+            print("\n" + "=" * 50)
+            print(f"DEMO ACTIVE SESSION TOKEN (HIJACKABLE): {token}")
+            print("=" * 50 + "\n")
+        else:
+            print("\n[WARNING] Demo user not found in database. Run seed.py first.\n")
+    finally:
+        db.close()
 

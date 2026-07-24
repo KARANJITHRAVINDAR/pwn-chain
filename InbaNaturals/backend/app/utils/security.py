@@ -6,6 +6,9 @@ from jose import JWTError, jwt
 
 from app.config import settings
 
+# In-memory session store to simulate active hijacked sessions
+ACTIVE_SESSIONS: dict = {}
+
 
 def get_password_hash(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
