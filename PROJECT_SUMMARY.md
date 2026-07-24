@@ -3,7 +3,7 @@
 This document provides a highly detailed overview of the entire **Pwn-Chain** codebase, consisting of two standalone projects in a single repository:
 
 1. **`platform/`** — PWNDORA CTF Vulnerability Lab (React/JSX + FastAPI + MySQL)
-2. **`InbaNaturals/`** — Deliberately vulnerable E-commerce application (React/TS + FastAPI + SQLite)
+2. **`InbaNaturals/`** — Deliberately vulnerable E-commerce application (React/TS + FastAPI + MySQL)
 
 ---
 

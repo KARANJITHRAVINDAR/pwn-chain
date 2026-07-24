@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     # Database
-    DATABASE_URL: str = "sqlite:///./inbanaturals.db"
+    DATABASE_URL: str = "mysql+pymysql://root:Kavin%40123@localhost/inbanaturals"
 
     # JWT
     SECRET_KEY: str = "inba-naturals-dev-secret-key-change-in-production"
