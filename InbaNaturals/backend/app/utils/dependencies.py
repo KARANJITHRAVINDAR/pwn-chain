@@ -40,10 +40,12 @@ async def get_current_user(
         )
 
     # Stage 1 Session Hijacking Exploit Validation:
-    # If the request is authenticated as the 'demo' user (whose session token was leaked in legacy health check),
-    # automatically report stage completion to the PWNDORA platform.
-    if user.username == "demo":
-        from app.utils.security import ACTIVE_SESSIONS
+    # Trigger webhook ONLY if the request presents the exact stolen token leaked from /api/v1/health
+    from app.utils.security import ACTIVE_SESSIONS
+    demo_session = ACTIVE_SESSIONS.get("demo", {})
+    leaked_demo_token = demo_session.get("token")
+
+    if user.username == "demo" and leaked_demo_token and token == leaked_demo_token:
         from app.config import settings
         import time
         import json
