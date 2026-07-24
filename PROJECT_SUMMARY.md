@@ -105,9 +105,9 @@ platform/
 #### Webhook Validation (`platform/backend/routes/webhook.py`)
 - `POST /api/webhook/stage-complete` — Stage completion validation endpoint.
 - Verifies integrity via an **HMAC-SHA256 signature** sent through the `x-signature` header, hashed using a pre-shared secret `WEBHOOK_SECRET = "super-secret-webhook-key-12345"`.
-- Prevents progression bypass by comparing the submitted payload stage against the DB session record (`payload.stage == session.max_unlocked_stage`).
-- Enforces completion idempotency.
-- Adds `100` points per stage, updates `max_unlocked_stage` in DB, and stamps `completed_at` when stage 4 is cleared.
+- Prevents progression bypass by validating that submitted payloads belong to active sessions (`payload.stage <= session.max_unlocked_stage`).
+- Evaluates idempotency first: if a stage completion has already been recorded, returns `200 OK ("Stage already completed")`.
+- Adds `100` points per stage, updates `max_unlocked_stage` in DB, and stamps `completed_at` when all stages are cleared.
 - Inserts audit logs in `webhook_log` for both verified and unverified payloads.
 
 ### 1.2 Platform Frontend
@@ -115,7 +115,7 @@ platform/
 - Implements a themed UI styled with modern CSS variables, cybernetic matrix/terminal glows, and a dark slate palette.
 - **`ParticleBackground.jsx`**: Canvas-driven interactive particle effect.
 - **`GlassCard.jsx` / `GlowingButton.jsx`**: Custom styled structural components.
-- **`Dashboard.jsx`**: Performs polling against `/session/current` every 5 seconds to update point scorecards, and maps current stage unlocked status (`unlocked` vs `locked` vs `completed`) on a timeline. Features an active Hint box with cost deductions.
+- **`Dashboard.jsx`**: Performs real-time polling against `/api/session/current` every 2 seconds to update point scorecards, displaying live stage progress (`unlocked` vs `locked` vs `completed`) on a cybernetic timeline. Features an active Hint box with cost deductions.
 
 ---
 
@@ -171,8 +171,18 @@ InbaNaturals/
 ### 2.1 InbaNaturals Backend
 
 #### Configuration & Core Hooks (`InbaNaturals/backend/app/config.py` & `main.py`)
-- Employs `pydantic-settings` to bind a custom configuration class (`Settings`) to `.env` fields. Default settings define standard SQLite path (`sqlite:///./inbanaturals.db`), HS256 secret keys, file upload folders, and SMTP hosts.
-- `on_startup` hook creates all database tables directly on app startup using SQLAlchemy's metadata bind.
+- Employs `pydantic-settings` to bind a custom configuration class (`Settings`) to `.env` fields. Default settings define standard SQLite path (`sqlite:///./inbanaturals.db`), HS256 secret keys, file upload folders, platform webhook URLs (`http://localhost:8080`), and SMTP hosts.
+- `on_startup` hook creates all database tables directly on app startup using SQLAlchemy's metadata bind, generates a fresh active JWT session token for the `demo` user, stores it in `ACTIVE_SESSIONS["demo"]`, and logs it to the console.
+
+#### Vulnerability Architecture: Stage 1 — Session Hijacking (`main.py` & `dependencies.py`)
+- **Vulnerability Types**: Information Exposure (**CWE-200**), Insufficient Session Expiration (**CWE-613**), and Direct Request / Forced Browsing (**CWE-425**).
+- **Endpoint**: `GET /api/v1/health` — Unauthenticated, unlinked from frontend, and omitted from Swagger OpenAPI `/docs`. Leaks the active `demo` user session JWT in `debug_active_sessions`.
+- **Exploit & Misuse Detection**:
+  - `get_current_user` in `dependencies.py` intercepts incoming requests.
+  - When an authenticated request arrives for the `demo` user (e.g. via terminal `curl` or setting `localStorage` / cookie in DevTools and refreshing `http://localhost:5174`), `get_current_user` decodes the token and authenticates the user.
+  - Resolves the active PWNDORA session ID from query param `session`, header `x-session`, or via automatic fallback lookup from MySQL `pwnchain.lab_sessions` table (`WHERE completed_at IS NULL ORDER BY started_at DESC`).
+  - Transmits an HMAC-SHA256 signed JSON payload (`"proof": "session_hijack_confirmed"`, `"artifact_type": "jwt"`) to the platform's `/api/webhook/stage-complete` endpoint.
+  - Platform backend validates the signature, records stage completion, awards 100 points, and unlocks Stage 2.
 
 #### Schemas & Pydantic Validation (`InbaNaturals/backend/app/schemas/`)
 Separates inputs/outputs to prevent sensitive field exposures (like password hashes). Example classes:
@@ -225,8 +235,9 @@ Shielded by the `get_admin_user` dependency (verifies JWT role is `admin`).
 
 ### 2.2 InbaNaturals Frontend
 
-#### Context Providers (`InbaNaturals/frontend/src/context/`)
-- **`AuthContext.tsx`**: Loads token from `localStorage` on init, calls `/auth/me` to set user state. Provides `login()`, `register()`, and `logout()` functions.
+#### Client Interceptor & Context Providers (`InbaNaturals/frontend/src/`)
+- **`src/api/client.ts`**: Axios client with request interceptors. Reads tokens from both `localStorage` and `document.cookie` (`token` or `auth_token`), attaching `Authorization: Bearer <token>`. Automatically captures `?session=<session_id>` query parameters from PWNDORA lab launches, persists `pwndora_session_id` in `localStorage`, and includes `x-session: <session_id>` on all API requests.
+- **`AuthContext.tsx`**: Initializes auth state from `localStorage` or `document.cookie`. When a student pastes a stolen token in DevTools and refreshes, `AuthContext` dispatches `/api/auth/me` to log the user in as `demo` and trigger progression. `logout()` completely purges `localStorage` items (`token`, `pwndora_session_id`) and expires cookies (`Max-Age=0`).
 - **`CartContext.tsx`**: Operates in two modes:
   - *Guest Mode (Unauthenticated)*: Saves cart items to React state.
   - *User Mode (Authenticated)*: Performs backend API synchronizations for add, update, delete, and clear actions.
