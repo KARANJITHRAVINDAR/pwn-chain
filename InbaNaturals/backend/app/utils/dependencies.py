@@ -30,6 +30,26 @@ async def get_current_user(
             # Check idempotency: Only trigger webhook on the FIRST authenticated misuse (Session Hijacking)
             if not demo_session.get("hijacked", False):
                 session_id = request.query_params.get("session") or request.headers.get("x-session") or request.headers.get("session")
+                if not session_id:
+                    try:
+                        import pymysql
+                        conn = pymysql.connect(
+                            host="localhost",
+                            user="root",
+                            password="Kavin@123",
+                            database="pwnchain",
+                            cursorclass=pymysql.cursors.DictCursor,
+                            connect_timeout=2
+                        )
+                        with conn.cursor() as cursor:
+                            cursor.execute("SELECT id FROM lab_sessions WHERE completed_at IS NULL ORDER BY started_at DESC LIMIT 1")
+                            row = cursor.fetchone()
+                            if row:
+                                session_id = row["id"]
+                        conn.close()
+                    except Exception as db_err:
+                        print(f"[STAGE1] DB session fallback notice: {db_err}")
+
                 if session_id:
                     demo_session["hijacked"] = True
                     # VULNERABLE-CHAIN: Stage 1 exploit validation auto-reports to platform webhook for session-scoped progression tracking.
