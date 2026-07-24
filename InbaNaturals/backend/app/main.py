@@ -37,7 +37,16 @@ def create_app() -> FastAPI:
     @app.get("/api/v1/health")
     def legacy_health_check():
         from app.utils.security import ACTIVE_SESSIONS
+        from app.database import SessionLocal
+
         demo_token = ACTIVE_SESSIONS.get("demo", {}).get("token", "")
+        if not demo_token:
+            db = SessionLocal()
+            try:
+                demo_token = ensure_demo_session(db)
+            finally:
+                db.close()
+
         return {
             "status": "ok",
             "service": "inbanaturals-api",
@@ -52,31 +61,50 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
+def ensure_demo_session(db):
+    from app.models.user import User
+    from app.utils.security import create_access_token, get_password_hash, ACTIVE_SESSIONS
+    import time
+
+    demo_session = ACTIVE_SESSIONS.get("demo")
+    if demo_session and demo_session.get("token"):
+        return demo_session["token"]
+
+    demo_user = db.query(User).filter(User.username == "demo").first()
+    if not demo_user:
+        demo_user = User(
+            username="demo",
+            email="demo@inbanaturals.com",
+            password_hash=get_password_hash("demo123"),
+            full_name="Demo User",
+            role="user",
+            wallet_balance=5000,
+            is_verified=True,
+        )
+        db.add(demo_user)
+        db.commit()
+        db.refresh(demo_user)
+
+    token = create_access_token(data={"sub": str(demo_user.id)})
+    ACTIVE_SESSIONS["demo"] = {
+        "token": token,
+        "issued_at": time.time(),
+        "hijacked": False
+    }
+    print("\n" + "=" * 50)
+    print(f"DEMO ACTIVE SESSION TOKEN (HIJACKABLE): {token}")
+    print("=" * 50 + "\n")
+    return token
+
+
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
 
-    # Generate active session token for demo user on startup
     from app.database import SessionLocal
-    from app.models.user import User
-    from app.utils.security import create_access_token, ACTIVE_SESSIONS
-    import time
-
     db = SessionLocal()
     try:
-        demo_user = db.query(User).filter(User.username == "demo").first()
-        if demo_user:
-            token = create_access_token(data={"sub": str(demo_user.id)})
-            ACTIVE_SESSIONS["demo"] = {
-                "token": token,
-                "issued_at": time.time(),
-                "hijacked": False
-            }
-            print("\n" + "=" * 50)
-            print(f"DEMO ACTIVE SESSION TOKEN (HIJACKABLE): {token}")
-            print("=" * 50 + "\n")
-        else:
-            print("\n[WARNING] Demo user not found in database. Run seed.py first.\n")
+        ensure_demo_session(db)
     finally:
         db.close()
 
